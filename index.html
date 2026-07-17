@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1/10 翻牌大挑戰 - 一注定生死</title>
+    <style>
+        /* 全域暗色背景，襯托紫色霓虹光 */
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background-color: #0b0914;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .info-panel {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        h1 {
+            color: #bd93f9;
+            text-shadow: 0 0 10px rgba(189, 147, 249, 0.6);
+            margin-bottom: 5px;
+        }
+        .chips {
+            font-size: 2rem;
+            color: #f1c40f;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(241, 196, 15, 0.5);
+        }
+        .status {
+            font-size: 1.1rem;
+            color: #a29bfe;
+            margin-top: 8px;
+        }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(5, 110px);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        /* 基本卡牌：紫色閃亮基底 */
+        .card {
+            width: 110px;
+            height: 155px;
+            /* 紫色迷幻漸層 */
+            background: linear-gradient(135deg, #4834d4, #6c5ce7, #301b7a);
+            background-size: 200% 200%;
+            border: 2px solid #a29bfe;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8rem;
+            /* 紫色閃亮發光陰影 */
+            box-shadow: 0 0 12px rgba(108, 92, 231, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+        }
+        
+        /* 滑鼠懸停：加強發光並微微放大 */
+        .card:hover:not(.flipped):not(.selected) {
+            transform: translateY(-8px) scale(1.03);
+            border-color: #e0d0ff;
+            box-shadow: 0 0 25px rgba(162, 155, 254, 1), inset 0 0 20px rgba(255, 255, 255, 0.4);
+        }
+        
+        /* 選取狀態：變成亮粉紫、極度閃爍 */
+        .card.selected {
+            background: linear-gradient(135deg, #fd79a8, #e84393, #6c5ce7);
+            border-color: #fff;
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: 0 0 35px rgba(232, 67, 147, 1), 0 0 15px rgba(255, 255, 255, 0.6);
+            animation: pulseGlow 1.5s infinite alternate;
+        }
+        
+        /* 選取後的呼吸閃爍動畫 */
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 20px rgba(232, 67, 147, 0.8); }
+            100% { box-shadow: 0 0 40px rgba(232, 67, 147, 1), 0 0 15px rgba(255, 255, 255, 0.5); }
+        }
+
+        /* 翻開狀態 */
+        .card.flipped {
+            background: #fff;
+            border-color: #fff;
+            cursor: default;
+            transform: none;
+            box-shadow: none;
+        }
+        /* 中獎：綠色神話光芒 */
+        .card.winner {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            border-color: #2ecc71;
+            box-shadow: 0 0 30px rgba(46, 204, 113, 0.8);
+        }
+        /* 槓龜：暗沉灰藍 */
+        .card.loser {
+            background: #2c3e50;
+            border-color: #34495e;
+            box-shadow: none;
+        }
+        
+        /* 按鈕與控制區 */
+        .control-panel {
+            display: flex;
+            gap: 15px;
+        }
+        .btn {
+            padding: 12px 35px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transition: all 0.2s;
+        }
+        #btn-action {
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+            color: #000;
+        }
+        #btn-action:hover:not(:disabled) {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(241, 196, 15, 0.4);
+        }
+        #btn-action:disabled {
+            background: #4a4a4a;
+            cursor: not-allowed;
+            color: #888;
+            box-shadow: none;
+        }
+        #btn-restart {
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: #fff;
+            display: none;
+        }
+        #btn-restart:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="info-panel">
+        <h1>🔮 1/10 紫曜晶華魔盒 🔮</h1>
+        <div class="chips">目前籌碼：<span id="player-chips">1000</span></div>
+        <div class="status" id="game-status">挑選受祝福的魔盒（每張100，最多選 9 張）</div>
+    </div>
+
+    <div id="game-board"></div>
+    
+    <div class="control-panel">
+        <button id="btn-action" class="btn" onclick="revealCards()">確認開牌 (已選 0 張)</button>
+        <button id="btn-restart" class="btn" onclick="initGame()">再玩一局</button>
+    </div>
+
+    <script>
+        let totalChips = 1000;
+        let isGameOver = false;
+        let isRevealed = false;
+        let prizeIndex = -1;
+        let selectedIndices = [];
+
+        const board = document.getElementById('game-board');
+        const chipsDisplay = document.getElementById('player-chips');
+        const statusDisplay = document.getElementById('game-status');
+        const actionBtn = document.getElementById('btn-action');
+        const restartBtn = document.getElementById('btn-restart');
+
+        function initGame() {
+            board.innerHTML = '';
+            isGameOver = false;
+            isRevealed = false;
+            selectedIndices = [];
+            
+            actionBtn.style.display = 'block';
+            actionBtn.disabled = true;
+            updateActionBtnText();
+            
+            restartBtn.style.display = 'none';
+            statusDisplay.textContent = '挑選受祝福的魔盒（每張100，最多選 9 張）';
+            statusDisplay.style.color = '#a29bfe';
+
+            prizeIndex = Math.floor(Math.random() * 10);
+
+            for (let i = 0; i < 10; i++) {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.index = i;
+                card.textContent = '❓';
+                card.addEventListener('click', handleCardSelect);
+                board.appendChild(card);
+            }
+            updateUI();
+        }
+
+        function handleCardSelect() {
+            if (isGameOver || isRevealed) return;
+
+            const selectedIndex = parseInt(this.dataset.index);
+            const indexInArray = selectedIndices.indexOf(selectedIndex);
+
+            if (indexInArray > -1) {
+                selectedIndices.splice(indexInArray, 1);
+                this.classList.remove('selected');
+            } else {
+                if (selectedIndices.length >= 9) {
+                    alert('最多只能選擇 9 張牌！');
+                    return;
+                }
+                if (totalChips < (selectedIndices.length + 1) * 100) {
+                    alert('您的籌碼不足以選擇更多卡片！');
+                    return;
+                }
+
+                selectedIndices.push(selectedIndex);
+                this.classList.add('selected');
+            }
+
+            actionBtn.disabled = selectedIndices.length === 0;
+            updateActionBtnText();
+        }
+
+        function updateActionBtnText() {
+            const cost = selectedIndices.length * 100;
+            actionBtn.textContent = `確認開牌 (已選 ${selectedIndices.length} 張，扣 ${cost})`;
+        }
+
+        function revealCards() {
+            if (selectedIndices.length === 0 || isRevealed) return;
+            
+            isRevealed = true;
+            actionBtn.style.display = 'none';
+            restartBtn.style.display = 'block';
+
+            const totalCost = selectedIndices.length * 100;
+            totalChips -= totalCost;
+
+            const hasWon = selectedIndices.includes(prizeIndex);
+            if (hasWon) {
+                totalChips += 1000;
+            }
+
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, i) => {
+                const index = parseInt(card.dataset.index);
+                
+                card.classList.remove('selected');
+                card.classList.add('flipped');
+
+                if (index === prizeIndex) {
+                    card.classList.add('winner');
+                    card.textContent = '💎'; // 中獎換成更搭紫色的鑽石！
+                } else if (selectedIndices.includes(index)) {
+                    card.classList.add('loser');
+                    card.textContent = '❌';
+                } else {
+                    card.style.opacity = '0.2';
+                    card.style.boxShadow = 'none';
+                    card.textContent = '⚫';
+                }
+            });
+
+            if (hasWon) {
+                statusDisplay.textContent = `🎉 啟動璀璨晶華！贏得 1,000 籌碼！（本次花費 ${totalCost}）`;
+                statusDisplay.style.color = '#2ecc71';
+            } else {
+                statusDisplay.textContent = `❌ 能量耗盡！核心鑽石不在這。（本次花費 ${totalCost}）`;
+                statusDisplay.style.color = '#ff7675';
+            }
+
+            isGameOver = true;
+            updateUI();
+        }
+
+        function updateUI() {
+            chipsDisplay.textContent = totalChips;
+        }
+
+        initGame();
+    </script>
+</body>
